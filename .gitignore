@@ -1,0 +1,44 @@
+# Gradle
+.gradle/
+build/
+out/
+
+# Kotlin/Java
+*.class
+*.log
+*.tmp
+*.swp
+*.swo
+
+# IntelliJ IDEA
+.idea/**/workspace.xml
+.idea/**/tasks.xml
+.idea/**/usage.statistics.xml
+.idea/**/dictionaries
+.idea/**/shelf
+.idea/**/contentModel.xml
+.idea/**/dataSources/
+.idea/**/dataSources.local.xml
+.idea/**/httpRequests/
+.idea/**/dynamic.xml
+.idea/**/sqlDataSources.xml
+.idea/**/gradle.xml
+.idea/**/libraries
+
+# IntelliJ output
+*.iml
+*.ipr
+*.iws
+
+# OS-specific
+.DS_Store
+Thumbs.db
+
+# Logs
+logs/
+hs_err_pid*
+
+# Local environment
+.env
+.env.*
+
