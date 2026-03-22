@@ -28,6 +28,10 @@ application {
     mainClass.set("com.rag.MainKt")
 }
 
+tasks.named<JavaExec>("run") {
+    standardInput = System.`in`
+}
+
 tasks.register<JavaExec>("runMain") {
     group = "application"
     description = "Run main() from MainKt"

@@ -1,74 +1,87 @@
 # RagKotlin
 
-Приложение на Kotlin и Ktor для построения эмбеддингов из набора `.text` файлов: чтение текстов, разбивка на чанки (500–1000 токенов, перекрытие 50–100 токенов), получение эмбеддингов через Ollama (модель `nomic-embed-text`) и сохранение результата в JSON.
+RAG-приложение на Kotlin: индексация `.text` документов (чанкинг + эмбеддинги через Ollama) и ответы на вопросы с помощью LLM (OpenRouter API, `openai/gpt-4o-mini`). Логирует ответ модели с RAG-контекстом и без него для сравнения.
 
 ## Требования
 
 - JDK 17+
-- [Ollama](https://ollama.com) с установленной моделью `nomic-embed-text`
+- [Ollama](https://ollama.com) с моделью `nomic-embed-text`
+- API-ключ [OpenRouter](https://openrouter.ai)
 
-## Установка Ollama и модели
+## Установка Ollama
 
 ### macOS / Linux
 
-1. Скачайте и установите Ollama с официального сайта:
-   - **macOS:** https://ollama.com/download — скачайте установщик и откройте его, либо в терминале:
+1. Установите Ollama:
    ```bash
    curl -fsSL https://ollama.com/install.sh | sh
    ```
-   - **Linux:** тот же скрипт или пакет из репозитория (см. [документацию](https://github.com/ollama/ollama/blob/main/docs/linux.md)).
 
-2. Запустите Ollama (на macOS после установки она обычно уже запущена):
+2. Запустите сервер:
    ```bash
    ollama serve
    ```
-   По умолчанию сервер слушает `http://localhost:11434`.
 
-3. Установите модель эмбеддингов:
+3. Скачайте модель эмбеддингов:
    ```bash
    ollama pull nomic-embed-text
    ```
-
-4. Проверка:
-   ```bash
-   curl http://localhost:11434/api/embed -d '{"model":"nomic-embed-text","input":"test"}'
-   ```
-   Должен вернуться JSON с полем `embeddings`.
 
 ### Windows
 
-1. Скачайте установщик с https://ollama.com/download и установите Ollama.
-2. Откройте терминал и выполните:
+1. Скачайте установщик с https://ollama.com/download.
+2. Скачайте модель:
    ```bash
    ollama pull nomic-embed-text
    ```
 
-## Запуск приложения
+## Настройка API-ключа
 
-1. Положите 3 (или любое количество) `.text` файлов в папку `texts/` в корне проекта.
-2. Убедитесь, что Ollama запущена и модель `nomic-embed-text` скачана.
-3. Соберите и запустите (нужен установленный [Gradle](https://gradle.org/install/) или сгенерируйте wrapper: `gradle wrapper`):
-   ```bash
-   ./gradlew run
-   ```
-   Или, если Gradle установлен глобально:
-   ```bash
-   gradle run
-   ```
-   Только сборка:
-   ```bash
-   ./gradlew build
-   ```
+Создайте файл `local.properties` в корне проекта:
 
-4. Результат будет записан в файл `embeddings.json` в корне проекта.
+```properties
+OPENROUTER_API_KEY=sk-or-v1-ваш-ключ
+```
 
-## Структура вывода
+## Запуск
 
-В `embeddings.json` сохраняется объект с массивом записей вида:
+### 1. Индексация документов
+
+Поместите `.text` файлы в папку `texts/` и запустите:
+
+```bash
+./gradlew run
+```
+
+Результат — файл `embeddings.json` с чанками и их эмбеддингами.
+
+### 2. RAG-запрос
+
+```bash
+./gradlew run --args='ask Что такое RAG?'
+```
+
+Приложение выполнит:
+1. Эмбеддинг вопроса через Ollama
+2. Поиск топ-3 релевантных чанков (cosine similarity)
+3. Запрос к LLM **без RAG** (только вопрос)
+4. Запрос к LLM **с RAG** (вопрос + контекст из найденных чанков)
+5. Вывод обоих ответов в лог для сравнения
+
+## Архитектура
+
+| Компонент | Файл | Назначение |
+|-----------|------|------------|
+| Chunker | `Chunker.kt` | Разбивка текста на чанки (500–1000 токенов, перекрытие 75) |
+| Embedding | `OllamaEmbeddingClient.kt` | Получение эмбеддингов через Ollama API |
+| Vector Search | `VectorSearch.kt` | Cosine similarity + top-K поиск |
+| LLM Chat | `OpenRouterChatClient.kt` | Запросы к OpenRouter API (`openai/gpt-4o-mini`) |
+| RAG Pipeline | `RagPipeline.kt` | Оркестрация: вопрос → поиск чанков → LLM |
+| Data | `EmbeddingRecord.kt` | Модели данных для эмбеддингов |
+
+## Структура `embeddings.json`
 
 - `sourceFile` — имя исходного `.text` файла
 - `chunkIndex` — индекс чанка
 - `text` — текст чанка
 - `embedding` — вектор эмбеддинга (массив чисел)
-
-Эти данные можно использовать для поиска по сходству или как контекст в RAG-пайплайне.

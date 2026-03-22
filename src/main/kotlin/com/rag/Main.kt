@@ -3,12 +3,26 @@ package com.rag
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import java.io.File
+import java.util.Properties
 
 private const val DEFAULT_TEXTS_DIR = "texts"
 private const val DEFAULT_OUTPUT_FILE = "embeddings.json"
 private const val BATCH_SIZE = 32
 
-fun main() {
+fun loadApiKey(): String {
+    val file = File("local.properties")
+    if (!file.exists()) {
+        throw IllegalStateException(
+            "Файл 'local.properties' не найден. Создайте его и добавьте OPENROUTER_API_KEY=ваш_ключ"
+        )
+    }
+    val props = Properties()
+    file.inputStream().use { props.load(it) }
+    return props.getProperty("OPENROUTER_API_KEY")
+        ?: throw IllegalStateException("OPENROUTER_API_KEY не найден в local.properties")
+}
+
+fun indexDocuments() {
     val textsDir = File(DEFAULT_TEXTS_DIR)
     if (!textsDir.isDirectory) {
         System.err.println("Папка '$DEFAULT_TEXTS_DIR' не найдена. Создайте папку и поместите в неё .text файлы.")
@@ -34,8 +48,8 @@ fun main() {
             maxTokens = 1000,
             overlapTokens = 75
         )
-        chunks.forEachIndexed { index, text ->
-            allChunks.add("${file.name}" to text)
+        chunks.forEachIndexed { _, text ->
+            allChunks.add(file.name to text)
         }
         println("  ${file.name}: ${chunks.size} чанков")
     }
@@ -74,5 +88,43 @@ fun main() {
         println("Сохранено ${records.size} записей в ${output.absolutePath}")
     } finally {
         client.close()
+    }
+}
+
+fun askQuestion(question: String) {
+    val apiKey = loadApiKey()
+    val embeddingClient = OllamaEmbeddingClient()
+    val chatClient = OpenRouterChatClient(apiKey = apiKey)
+    val pipeline = RagPipeline()
+
+    try {
+        pipeline.answerQuestion(question, embeddingClient, chatClient)
+    } finally {
+        embeddingClient.close()
+        chatClient.close()
+    }
+}
+
+fun main(args: Array<String>) {
+    when {
+        args.isEmpty() || args[0] == "index" -> {
+            println("=== Режим индексации ===")
+            indexDocuments()
+        }
+        args[0] == "ask" -> {
+            val question = args.drop(1).joinToString(" ")
+            if (question.isBlank()) {
+                System.err.println("Укажите вопрос: ./gradlew run --args='ask Ваш вопрос'")
+                return
+            }
+            println("=== Режим RAG-запроса ===")
+            askQuestion(question)
+        }
+        else -> {
+            println("Использование:")
+            println("  ./gradlew run                          — индексация документов")
+            println("  ./gradlew run --args='index'           — индексация документов")
+            println("  ./gradlew run --args='ask Ваш вопрос'  — задать вопрос по документам")
+        }
     }
 }
