@@ -97,11 +97,21 @@ fun askQuestion(question: String) {
     val chatClient = OpenRouterChatClient(apiKey = apiKey)
     val pipeline = RagPipeline()
 
+    val jinaReranker = JinaReranker(apiKey)
+    val llmReranker = LlmReranker(apiKey)
+
     try {
-        pipeline.answerQuestion(question, embeddingClient, chatClient)
+        pipeline.answerWithRerankComparison(
+            question = question,
+            embeddingClient = embeddingClient,
+            chatClient = chatClient,
+            rerankers = listOf(jinaReranker, llmReranker)
+        )
     } finally {
         embeddingClient.close()
         chatClient.close()
+        jinaReranker.close()
+        llmReranker.close()
     }
 }
 
@@ -117,14 +127,14 @@ fun main(args: Array<String>) {
                 System.err.println("Укажите вопрос: ./gradlew run --args='ask Ваш вопрос'")
                 return
             }
-            println("=== Режим RAG-запроса ===")
+            println("=== Режим RAG-запроса (с реранкингом) ===")
             askQuestion(question)
         }
         else -> {
             println("Использование:")
             println("  ./gradlew run                          — индексация документов")
             println("  ./gradlew run --args='index'           — индексация документов")
-            println("  ./gradlew run --args='ask Ваш вопрос'  — задать вопрос по документам")
+            println("  ./gradlew run --args='ask Ваш вопрос'  — задать вопрос (сравнение с/без реранкинга)")
         }
     }
 }
