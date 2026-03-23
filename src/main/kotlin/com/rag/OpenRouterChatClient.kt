@@ -2,6 +2,7 @@ package com.rag
 
 import io.ktor.client.*
 import io.ktor.client.engine.cio.*
+import io.ktor.client.plugins.*
 import io.ktor.client.request.*
 import io.ktor.client.statement.*
 import io.ktor.http.*
@@ -18,6 +19,9 @@ class OpenRouterChatClient(
 
     private val client = HttpClient(CIO) {
         expectSuccess = false
+        install(HttpTimeout) {
+            requestTimeoutMillis = 30_000
+        }
         installHttpLogging()
     }
 

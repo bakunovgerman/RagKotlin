@@ -2,6 +2,7 @@ package com.rag
 
 import io.ktor.client.*
 import io.ktor.client.engine.cio.*
+import io.ktor.client.plugins.*
 import io.ktor.client.request.*
 import io.ktor.client.statement.*
 import io.ktor.http.*
@@ -21,6 +22,9 @@ class LlmReranker(
     private val endpoint = "https://openrouter.ai/api/v1/chat/completions"
     private val client = HttpClient(CIO) {
         expectSuccess = false
+        install(HttpTimeout) {
+            requestTimeoutMillis = 30_000
+        }
         installHttpLogging()
     }
     private val json = Json { ignoreUnknownKeys = true }

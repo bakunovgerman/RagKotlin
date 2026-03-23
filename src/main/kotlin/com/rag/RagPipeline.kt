@@ -12,8 +12,8 @@ data class RerankerAnswer(
 
 class RagPipeline(
     embeddingsFile: String = "embeddings.json",
-    private val topK: Int = 10,
-    private val relevanceThreshold: Double = 0.5
+    private val topK: Int = 9,
+    private val relevanceThreshold: Double = 0.3
 ) {
     private val json = Json { ignoreUnknownKeys = true }
     private val records: List<EmbeddingRecord>
@@ -40,7 +40,7 @@ class RagPipeline(
         println("=".repeat(90))
 
         val queryEmbedding = embeddingClient.getEmbedding(question)
-        val topChunks = VectorSearch.findTopK(queryEmbedding, records, topK)
+        val topChunks = VectorSearch.findTopK(question, queryEmbedding, records, topK)
 
         println("\n[ЭТАП 1: Векторный поиск] Топ-$topK чанков:")
         topChunks.forEachIndexed { i, (record, score) ->

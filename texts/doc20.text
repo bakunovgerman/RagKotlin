@@ -1,1 +1,36 @@
-Мировой финансовый кризис 2007–2008 годов развился из рынка ипотечных ценных бумаг в США: дефолты заёмщиков с низкой кредитоспособностью («субстандартные ипотеки») обесценили сложные деривативы. Падение доверия между банками заморозило межбанковское кредитование; ряд крупных институтов обанкротился или был национализирован. Рецессия распространилась на глобальную торговлю и занятость. В ответ центральные банки снизили ставки и применили количественное смягчение; правительства расширили фискальные стимулы и ужесточили регулирование банковского сектора (в т.ч. базельские нормы).
+# Правило создания ViewModel
+
+## Общие принципы
+
+1. **ViewModel** должна быть частью уровня представления (presentation layer)
+2. Используйте **Koin** для внедрения зависимостей
+3. Следуйте принципам **Clean Architecture**: ViewModel не должна знать о деталях реализации Use Cases
+4. Используйте **StateFlow** или **SharedFlow** для управления состоянием UI
+5. Все операции с данными должны происходить в **корутинах**
+
+## Структура ViewModel
+
+class YourViewModel(
+    private val getDataUseCase: GetDataUseCase,
+) : BaseViewModel() {
+
+    val uiState: StateFlow<YourFeatureUiState> = _uiState.asStateFlow()
+
+    init {
+        getData()
+    }
+
+    // Обработка действий пользователя
+    fun handleAction(action: YourAction) {
+        when (action) {
+            is YourAction.Refresh -> loadData()
+            is YourAction.SaveData -> saveData(action.data)
+        }
+    }
+
+    private fun loadData() {
+        viewModelScope.launch(Dispatchers.IO) {
+             val data = getDataUseCase()
+        }
+    }
+}
