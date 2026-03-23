@@ -14,10 +14,13 @@ class JinaReranker(private val apiKey: String) : Reranker {
 
     override val name = "Jina Reranker v2 (multilingual)"
 
-    private val endpoint = "https://openrouter.ai/api/v1/rerank"
-    private val model = "jina/jina-reranker-v2-base-multilingual"
+    private val endpoint = "https://api.jina.ai/v1/rerank"
+    private val model = "jina-reranker-v2-base-multilingual"
 
-    private val client = HttpClient(CIO) { expectSuccess = false }
+    private val client = HttpClient(CIO) {
+        expectSuccess = false
+        installHttpLogging()
+    }
     private val json = Json { ignoreUnknownKeys = true }
 
     @Serializable
@@ -31,7 +34,8 @@ class JinaReranker(private val apiKey: String) : Reranker {
     @Serializable
     private data class RerankResponseResult(
         val index: Int,
-        @SerialName("relevance_score") val relevanceScore: Double
+        @SerialName("relevance_score") val relevanceScore: Double,
+        val document: String? = null
     )
 
     @Serializable
@@ -68,7 +72,7 @@ class JinaReranker(private val apiKey: String) : Reranker {
             RerankResult(
                 index = r.index,
                 relevanceScore = r.relevanceScore,
-                text = documents[r.index]
+                text = r.document ?: documents[r.index]
             )
         }.sortedByDescending { it.relevanceScore }
     }

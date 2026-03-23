@@ -19,7 +19,10 @@ class LlmReranker(
     override val name = "LLM Reranker ($model)"
 
     private val endpoint = "https://openrouter.ai/api/v1/chat/completions"
-    private val client = HttpClient(CIO) { expectSuccess = false }
+    private val client = HttpClient(CIO) {
+        expectSuccess = false
+        installHttpLogging()
+    }
     private val json = Json { ignoreUnknownKeys = true }
 
     @Serializable

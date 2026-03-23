@@ -15,6 +15,7 @@ class OllamaEmbeddingClient(
 ) {
     private val client = HttpClient(CIO) {
         expectSuccess = false
+        installHttpLogging()
     }
 
     private val json = Json { ignoreUnknownKeys = true }

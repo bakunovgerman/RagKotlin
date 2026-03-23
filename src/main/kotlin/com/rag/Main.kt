@@ -9,17 +9,26 @@ private const val DEFAULT_TEXTS_DIR = "texts"
 private const val DEFAULT_OUTPUT_FILE = "embeddings.json"
 private const val BATCH_SIZE = 32
 
-fun loadApiKey(): String {
+fun loadProperties(): Properties {
     val file = File("local.properties")
     if (!file.exists()) {
         throw IllegalStateException(
-            "Файл 'local.properties' не найден. Создайте его и добавьте OPENROUTER_API_KEY=ваш_ключ"
+            "Файл 'local.properties' не найден. Создайте его и добавьте необходимые ключи"
         )
     }
     val props = Properties()
     file.inputStream().use { props.load(it) }
-    return props.getProperty("OPENROUTER_API_KEY")
+    return props
+}
+
+fun loadApiKey(): String {
+    return loadProperties().getProperty("OPENROUTER_API_KEY")
         ?: throw IllegalStateException("OPENROUTER_API_KEY не найден в local.properties")
+}
+
+fun loadJinaApiKey(): String {
+    return loadProperties().getProperty("JINA_API_KEY")
+        ?: throw IllegalStateException("JINA_API_KEY не найден в local.properties")
 }
 
 fun indexDocuments() {
@@ -97,7 +106,8 @@ fun askQuestion(question: String) {
     val chatClient = OpenRouterChatClient(apiKey = apiKey)
     val pipeline = RagPipeline()
 
-    val jinaReranker = JinaReranker(apiKey)
+    val jinaApiKey = loadJinaApiKey()
+    val jinaReranker = JinaReranker(jinaApiKey)
     val llmReranker = LlmReranker(apiKey)
 
     try {
