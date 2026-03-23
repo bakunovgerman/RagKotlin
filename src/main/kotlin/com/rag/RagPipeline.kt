@@ -12,7 +12,7 @@ data class RerankerAnswer(
 
 class RagPipeline(
     embeddingsFile: String = "embeddings.json",
-    private val topK: Int = 3,
+    private val topK: Int = 10,
     private val relevanceThreshold: Double = 0.5
 ) {
     private val json = Json { ignoreUnknownKeys = true }
