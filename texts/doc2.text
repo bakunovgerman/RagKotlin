@@ -1,1 +1,5 @@
-Embeddings are dense vector representations of text that capture semantic meaning. Words or sentences that are similar in meaning end up close together in the embedding space. Models like nomic-embed-text produce fixed-size vectors (e.g. 768 dimensions) for any input text. These vectors can be compared using cosine similarity or other metrics to find semantically related content. In RAG, document chunks are embedded and stored; when a user asks a question, the question is embedded and the most similar stored chunks are retrieved and fed to the language model.
+«Мой путь в IT начался в стенах Новосибирского государственного технического университета (НГТУ НЭТИ). Я выбрал Факультет автоматики и вычислительной техники (АВТФ), потому что с детства хотел не просто пользоваться техникой, а создавать программные продукты.
+
+Поступил я в 2018 году на направление «Программная инженерия». Обучение длилось 4 года в бакалавриате + 2 года в магистратуре. Это были насыщенные годы: от написания первой программы на C++ на 1-м курсе до защиты диплома, связанного с веб-разработкой.
+
+НГТУ НЭТИ дал мне мощную базу: алгоритмы, архитектуру ПО и, что самое важное, умение учиться новому самостоятельно. Сейчас я работаю ОТП банк, и фундамент, заложенный в альма-матер, ощущаю до сих пор».
