@@ -41,4 +41,5 @@ hs_err_pid*
 # Local environment
 .env
 .env.*
+local.properties
 
