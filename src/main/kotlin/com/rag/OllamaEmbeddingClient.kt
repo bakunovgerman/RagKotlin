@@ -12,7 +12,7 @@ import kotlinx.serialization.json.Json
 class OllamaEmbeddingClient(
     private val baseUrl: String = "http://localhost:11434",
     private val model: String = "nomic-embed-text"
-) {
+) : EmbeddingClient {
     private val client = HttpClient(CIO) {
         expectSuccess = false
         installHttpLogging()
@@ -31,7 +31,7 @@ class OllamaEmbeddingClient(
         val embeddings: List<List<Double>>? = null
     )
 
-    fun getEmbeddings(texts: List<String>): List<List<Double>> = runBlocking {
+    override fun getEmbeddings(texts: List<String>, task: EmbeddingTask): List<List<Double>> = runBlocking {
         if (texts.isEmpty()) return@runBlocking emptyList()
 
         val body = EmbedRequest(model = model, input = texts)
@@ -48,9 +48,7 @@ class OllamaEmbeddingClient(
         parsed.embeddings ?: emptyList()
     }
 
-    fun getEmbedding(text: String): List<Double> = getEmbeddings(listOf(text)).singleOrNull() ?: emptyList()
-
-    fun close() {
+    override fun close() {
         client.close()
     }
 }

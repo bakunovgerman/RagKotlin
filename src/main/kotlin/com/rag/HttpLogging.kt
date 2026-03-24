@@ -4,7 +4,7 @@ import io.ktor.client.*
 import io.ktor.client.engine.HttpClientEngineConfig
 import io.ktor.client.plugins.logging.*
 
-var httpLoggingEnabled = false
+var httpLoggingEnabled = true
 
 private object HttpLogger : Logger {
     override fun log(message: String) {

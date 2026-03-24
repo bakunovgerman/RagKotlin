@@ -6,8 +6,14 @@ import java.io.File
 import java.util.Properties
 
 private const val DEFAULT_TEXTS_DIR = "texts"
-private const val DEFAULT_OUTPUT_FILE = "embeddings.json"
+private const val DEFAULT_OUTPUT_FILE_OLLAMA = "embeddings.json"
+private const val DEFAULT_OUTPUT_FILE_JINA = "embeddings-jina-v3.json"
 private const val BATCH_SIZE = 32
+
+enum class EmbeddingProvider {
+    OLLAMA,
+    JINA
+}
 
 fun loadProperties(): Properties {
     val file = File("local.properties")
@@ -31,7 +37,34 @@ fun loadJinaApiKey(): String {
         ?: throw IllegalStateException("JINA_API_KEY не найден в local.properties")
 }
 
-fun indexDocuments() {
+fun parseEmbeddingProvider(arg: String?): EmbeddingProvider {
+    return when (arg?.trim()?.lowercase()) {
+        null, "", "ollama" -> EmbeddingProvider.OLLAMA
+        "jina", "jina-v3", "jinaai/jina-embeddings-v3" -> EmbeddingProvider.JINA
+        else -> throw IllegalArgumentException("Неизвестный embedding provider: '$arg'")
+    }
+}
+
+fun isProviderArg(arg: String?): Boolean {
+    val normalized = arg?.trim()?.lowercase() ?: return false
+    return normalized in setOf("ollama", "jina", "jina-v3", "jinaai/jina-embeddings-v3")
+}
+
+fun defaultEmbeddingsFile(provider: EmbeddingProvider): String {
+    return when (provider) {
+        EmbeddingProvider.OLLAMA -> DEFAULT_OUTPUT_FILE_OLLAMA
+        EmbeddingProvider.JINA -> DEFAULT_OUTPUT_FILE_JINA
+    }
+}
+
+fun createEmbeddingClient(provider: EmbeddingProvider): EmbeddingClient {
+    return when (provider) {
+        EmbeddingProvider.OLLAMA -> OllamaEmbeddingClient()
+        EmbeddingProvider.JINA -> JinaEmbeddingClient(apiKey = loadJinaApiKey())
+    }
+}
+
+fun indexDocuments(provider: EmbeddingProvider, outputFile: String = defaultEmbeddingsFile(provider)) {
     val textsDir = File(DEFAULT_TEXTS_DIR)
     if (!textsDir.isDirectory) {
         System.err.println("Папка '$DEFAULT_TEXTS_DIR' не найдена. Создайте папку и поместите в неё .text файлы.")
@@ -68,15 +101,15 @@ fun indexDocuments() {
         return
     }
 
-    val client = OllamaEmbeddingClient()
+    val client = createEmbeddingClient(provider)
     val records = mutableListOf<EmbeddingRecord>()
     val json = Json { prettyPrint = true }
 
     try {
         allChunks.chunked(BATCH_SIZE).forEachIndexed { batchIndex, batch ->
             val texts = batch.map { it.second }
-            println("Эмбеддинги: батч ${batchIndex + 1}, ${texts.size} чанков...")
-            val embeddings = client.getEmbeddings(texts)
+            println("Эмбеддинги (${provider.name.lowercase()}): батч ${batchIndex + 1}, ${texts.size} чанков...")
+            val embeddings = client.getEmbeddings(texts, EmbeddingTask.INDEX)
             batch.forEachIndexed { i, (fileName, text) ->
                 val embedding = embeddings.getOrNull(i) ?: emptyList<Double>()
                 val globalIndex = batchIndex * BATCH_SIZE + i
@@ -92,7 +125,7 @@ fun indexDocuments() {
         }
 
         val export = EmbeddingsExport(records = records)
-        val output = File(DEFAULT_OUTPUT_FILE)
+        val output = File(outputFile)
         output.writeText(json.encodeToString(export), Charsets.UTF_8)
         println("Сохранено ${records.size} записей в ${output.absolutePath}")
     } finally {
@@ -100,11 +133,15 @@ fun indexDocuments() {
     }
 }
 
-fun askQuestion(question: String) {
+fun askQuestion(
+    question: String,
+    provider: EmbeddingProvider,
+    embeddingsFile: String = defaultEmbeddingsFile(provider)
+) {
     val apiKey = loadApiKey()
-    val embeddingClient = OllamaEmbeddingClient()
+    val embeddingClient = createEmbeddingClient(provider)
     val chatClient = OpenRouterChatClient(apiKey = apiKey)
-    val pipeline = RagPipeline()
+    val pipeline = RagPipeline(embeddingsFile = embeddingsFile)
 
     val jinaApiKey = loadJinaApiKey()
     val jinaReranker = JinaReranker(jinaApiKey)
@@ -128,23 +165,40 @@ fun askQuestion(question: String) {
 fun main(args: Array<String>) {
     when {
         args.isEmpty() || args[0] == "index" -> {
-            println("=== Режим индексации ===")
-            indexDocuments()
+            val provider = if (isProviderArg(args.getOrNull(1))) {
+                parseEmbeddingProvider(args.getOrNull(1))
+            } else {
+                EmbeddingProvider.OLLAMA
+            }
+            val outputFile = args.getOrNull(2) ?: defaultEmbeddingsFile(provider)
+            println("=== Режим индексации (${provider.name.lowercase()}) ===")
+            indexDocuments(provider = provider, outputFile = outputFile)
         }
         args[0] == "ask" -> {
-            val question = args.drop(1).joinToString(" ")
+            val hasProvider = isProviderArg(args.getOrNull(1))
+            val provider = if (hasProvider) parseEmbeddingProvider(args.getOrNull(1)) else EmbeddingProvider.OLLAMA
+            val outputFile = if (hasProvider) {
+                args.getOrNull(2) ?: defaultEmbeddingsFile(provider)
+            } else {
+                defaultEmbeddingsFile(provider)
+            }
+            val question = if (hasProvider) args.drop(3).joinToString(" ") else args.drop(1).joinToString(" ")
             if (question.isBlank()) {
-                System.err.println("Укажите вопрос: ./gradlew run --args='ask Ваш вопрос'")
+                System.err.println("Укажите вопрос: ./gradlew run --args='ask [provider] [embeddings_file] Ваш вопрос'")
                 return
             }
-            println("=== Режим RAG-запроса (с реранкингом) ===")
-            askQuestion(question)
+            println("=== Режим RAG-запроса (${provider.name.lowercase()}, с реранкингом) ===")
+            askQuestion(question = question, provider = provider, embeddingsFile = outputFile)
         }
         else -> {
             println("Использование:")
-            println("  ./gradlew run                          — индексация документов")
-            println("  ./gradlew run --args='index'           — индексация документов")
-            println("  ./gradlew run --args='ask Ваш вопрос'  — задать вопрос (сравнение с/без реранкинга)")
+            println("  ./gradlew run --args='index [provider] [output_file]'")
+            println("  ./gradlew run --args='ask [provider] [embeddings_file] Ваш вопрос'")
+            println()
+            println("provider: ollama | jina")
+            println("defaults:")
+            println("  ollama -> $DEFAULT_OUTPUT_FILE_OLLAMA")
+            println("  jina   -> $DEFAULT_OUTPUT_FILE_JINA")
         }
     }
 }

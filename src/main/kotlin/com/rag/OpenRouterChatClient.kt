@@ -20,7 +20,7 @@ class OpenRouterChatClient(
     private val client = HttpClient(CIO) {
         expectSuccess = false
         install(HttpTimeout) {
-            requestTimeoutMillis = 30_000
+            requestTimeoutMillis = 60_000
         }
         installHttpLogging()
     }

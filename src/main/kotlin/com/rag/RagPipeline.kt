@@ -30,7 +30,7 @@ class RagPipeline(
 
     fun answerWithRerankComparison(
         question: String,
-        embeddingClient: OllamaEmbeddingClient,
+        embeddingClient: EmbeddingClient,
         chatClient: OpenRouterChatClient,
         rerankers: List<Reranker>
     ) {
@@ -39,7 +39,7 @@ class RagPipeline(
         println("[ПОРОГ РЕЛЕВАНТНОСТИ] $relevanceThreshold")
         println("=".repeat(90))
 
-        val queryEmbedding = embeddingClient.getEmbedding(question)
+        val queryEmbedding = embeddingClient.getEmbedding(question, EmbeddingTask.QUERY)
         val topChunks = VectorSearch.findTopK(question, queryEmbedding, records, topK)
 
         println("\n[ЭТАП 1: Векторный поиск] Топ-$topK чанков:")
