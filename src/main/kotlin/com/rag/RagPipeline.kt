@@ -100,6 +100,9 @@ class RagPipeline(
     private fun buildRagSystemPrompt(context: String): String = buildString {
         appendLine("Ты — полезный ассистент. Отвечай на вопрос, используя ТОЛЬКО предоставленный контекст.")
         appendLine("Если в контексте нет ответа, так и скажи.")
+        appendLine("В КАЖДОМ ответе обязательно укажи ссылки на источники которые использовал и зачем в формате [название_файла].")
+        appendLine("Используй реальные имена источников только из контекста")
+        appendLine("Если ссылаешься на несколько источников, укажи несколько ссылок: [a.pdf] [b.pdf].")
         appendLine()
         appendLine("КОНТЕКСТ:")
         appendLine(context)
